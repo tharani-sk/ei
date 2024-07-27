@@ -1,0 +1,187 @@
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+class Room {
+    private int roomId;
+    private String name;
+    private boolean isOccupied;
+    private boolean airConditioning;
+    private boolean lighting;
+
+    public Room(int roomId, String name) {
+        this.roomId = roomId;
+        this.name = name;
+        this.isOccupied = false;
+        this.airConditioning = false;
+        this.lighting = false;
+    }
+
+    public int getRoomId() {
+        return roomId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean isOccupied() {
+        return isOccupied;
+    }
+
+    public void setOccupied(boolean isOccupied) {
+        this.isOccupied = isOccupied;
+        controlEnvironment();
+    }
+
+    public boolean isAirConditioning() {
+        return airConditioning;
+    }
+
+    public boolean isLighting() {
+        return lighting;
+    }
+
+    private void controlEnvironment() {
+        if (isOccupied) {
+            airConditioning = true;
+            lighting = true;
+        } else {
+            airConditioning = false;
+            lighting = false;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "Room " + name + " (ID: " + roomId + ")";
+    }
+}
+
+class Booking {
+    private Room room;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+
+    public Booking(Room room, LocalDateTime startTime, LocalDateTime endTime) {
+        this.room = room;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+
+    public Room getRoom() {
+        return room;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    @Override
+    public String toString() {
+        return "Booking in " + room + " from " + startTime + " to " + endTime;
+    }
+}
+
+class SmartOffice {
+    private static SmartOffice instance = null;
+    private Map<Integer, Room> rooms = new HashMap<>();
+    private List<Booking> bookings = new ArrayList<>();
+
+    private SmartOffice() { }
+
+    public static synchronized SmartOffice getInstance() {
+        if (instance == null) {
+            instance = new SmartOffice();
+        }
+        return instance;
+    }
+
+    public void addRoom(Room room) {
+        rooms.put(room.getRoomId(), room);
+    }
+
+    public Booking bookRoom(int roomId, LocalDateTime startTime, LocalDateTime endTime) {
+        Room room = rooms.get(roomId);
+        if (room != null && !isRoomBooked(roomId, startTime, endTime)) {
+            Booking booking = new Booking(room, startTime, endTime);
+            bookings.add(booking);
+            return booking;
+        }
+        return null;
+    }
+
+    public boolean cancelBooking(Booking booking) {
+        return bookings.remove(booking);
+    }
+
+    private boolean isRoomBooked(int roomId, LocalDateTime startTime, LocalDateTime endTime) {
+        for (Booking booking : bookings) {
+            if (booking.getRoom().getRoomId() == roomId) {
+                if (booking.getStartTime().isBefore(endTime) && startTime.isBefore(booking.getEndTime())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void detectOccupancy(int roomId, boolean isOccupied) {
+        Room room = rooms.get(roomId);
+        if (room != null) {
+            room.setOccupied(isOccupied);
+        }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SmartOffice with rooms:\n");
+        for (Room room : rooms.values()) {
+            sb.append(room).append("\n");
+        }
+        return sb.toString();
+    }
+}
+
+public class SmartOfficeApp {
+    public static void main(String[] args) {
+        SmartOffice office = SmartOffice.getInstance();
+
+        // Add rooms
+        office.addRoom(new Room(1, "Conference Room A"));
+        office.addRoom(new Room(2, "Conference Room B"));
+
+        // Book rooms
+        LocalDateTime startTime = LocalDateTime.now();
+        LocalDateTime endTime = startTime.plusHours(1);
+        Booking booking = office.bookRoom(1, startTime, endTime);
+        if (booking != null) {
+            System.out.println("Booking Successful: " + booking);
+        } else {
+            System.out.println("Room is already booked or invalid room ID.");
+        }
+
+        // Detect occupancy and control environment
+        office.detectOccupancy(1, true);  // Room 1 is occupied
+        Room room = office.rooms.get(1);
+        System.out.println("Room 1 occupancy: " + room.isOccupied() + ", AC: " + room.isAirConditioning() + ", Lights: " + room.isLighting());
+
+        // Cancel booking
+        if (office.cancelBooking(booking)) {
+            System.out.println("Booking cancelled successfully.");
+        } else {
+            System.out.println("Failed to cancel booking.");
+        }
+
+        // Detect vacancy and control environment
+        office.detectOccupancy(1, false);  // Room 1 is now vacant
+        System.out.println("Room 1 occupancy: " + room.isOccupied() + ", AC: " + room.isAirConditioning() + ", Lights: " + room.isLighting());
+    }
+}
